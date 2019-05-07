@@ -1,0 +1,77 @@
+{
+  "surface": [
+    17840000,
+    0,
+    0
+  ],
+  "demographics": {
+    "population": [
+      385742554,
+      385744896
+    ]
+  },
+  "languages": {
+    "2": [
+      "inglés"
+    ],
+    "_t": "a",
+    "_2": [
+      "english",
+      0,
+      0
+    ]
+  },
+  "countries": {
+    "0": {
+      "capital": [
+        "Buenos Aires",
+        "Rawson"
+      ]
+    },
+    "9": [
+      {
+        "name": "Antártida",
+        "unasur": false
+      }
+    ],
+    "10": {
+      "population": [
+        42888594
+      ]
+    },
+    "_t": "a",
+    "_4": [
+      "",
+      10,
+      3
+    ],
+    "_8": [
+      "",
+      2,
+      3
+    ],
+    "_10": [
+      {
+        "name": "Uruguay",
+        "capital": "Montevideo",
+        "independence": "1825-08-25T00:14:44.000Z",
+        "unasur": true
+      },
+      0,
+      0
+    ],
+    "_11": [
+      {
+        "name": "Venezuela",
+        "capital": "Caracas",
+        "independence": "1811-07-05T00:14:44.000Z",
+        "unasur": true
+      },
+      0,
+      0
+    ]
+  },
+  "spanishName": [
+    "Sudamérica"
+  ]
+}

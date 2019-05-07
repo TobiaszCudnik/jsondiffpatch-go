@@ -1,0 +1,96 @@
+{
+  "name": "South America",
+  "timezone": [
+    -4,
+    -2
+  ],
+  "demographics": {
+    "population": 385744896,
+    "largestCities": [
+      "São Paulo",
+      "Buenos Aires",
+      "Rio de Janeiro",
+      "Lima",
+      "Bogotá"
+    ]
+  },
+  "languages": [
+    "spanish",
+    "portuguese",
+    "inglés",
+    "dutch",
+    "french",
+    "quechua",
+    "guaraní",
+    "aimara",
+    "mapudungun"
+  ],
+  "countries": [
+    {
+      "name": "Argentina",
+      "capital": "Rawson",
+      "independence": "1816-07-09T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Bolivia",
+      "capital": "La Paz",
+      "independence": "1825-08-06T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Peru",
+      "capital": "Lima",
+      "independence": "1821-07-28T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Brazil",
+      "capital": "Brasilia",
+      "independence": "1822-09-07T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Chile",
+      "capital": "Santiago",
+      "independence": "1818-02-12T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Ecuador",
+      "capital": "Quito",
+      "independence": "1809-08-10T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Guyana",
+      "capital": "Georgetown",
+      "independence": "1966-05-25T23:00:00.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Paraguay",
+      "capital": "Asunción",
+      "independence": "1811-05-14T00:14:44.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Suriname",
+      "capital": "Paramaribo",
+      "independence": "1975-11-24T23:00:00.000Z",
+      "unasur": true
+    },
+    {
+      "name": "Antártida",
+      "unasur": false
+    },
+    {
+      "name": "Colombia",
+      "capital": "Bogotá",
+      "independence": "1810-07-20T00:14:44.000Z",
+      "unasur": true,
+      "population": 42888594
+    }
+  ],
+  "spanishName": "Sudamérica"
+}
