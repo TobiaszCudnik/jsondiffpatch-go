@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-var TRIES = 1
+var TRIES = 100 * 1000
+
+//var TRIES = 1
 
 func main() {
 
@@ -20,7 +22,7 @@ func main() {
 	right := fileToJSON(fmt.Sprintf(`test/fixtures/1/right.json`))
 
 	start := time.Now()
-	for i := 0; i <= TRIES; i++ {
+	for i := 0; i < TRIES; i++ {
 		// make the diff
 		jsondiffpatch.Diff(left, right)
 	}
