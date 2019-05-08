@@ -14,6 +14,8 @@ var DEBUG = false
 var BY_ID = false
 var TEXT_DIFF_MIN_LENGTH = 60
 
+// types of operations
+// TODO enum?
 var REMOVED = 0
 var TEXT_DIFF = 2
 var MOVED = 3
@@ -89,11 +91,12 @@ func diffArray(left []interface{}, right interface{}) string {
 	}
 
 	rightArr, rightOk := right.([]interface{})
-	if !rightOk { // right isn't an array
-		leftJson, _ := json.Marshal(left)
-		rightJson, _ := json.Marshal(right)
-		return fmt.Sprintf("[%s, %s]", leftJson, rightJson)
+	if !rightOk {
+		// right isn't an array
+		return changeValue(left, right)
 	}
+
+	// both are arrays, diff by IDs or positions
 	if BY_ID {
 		return diffArrayByID(left, rightArr)
 	} else {
