@@ -1,0 +1,30 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        let mod, inst;
+        WebAssembly
+            .instantiateStreaming(fetch("../jdp-go.wasm"), go.importObject)
+            .then(async result => {
+                mod = result.module;
+                inst = result.instance;
+                await go.run(inst);
+            });
+    </script>
+    <script>
+        let left, right
+        async function fetchJSON() {
+            const left_fetch = await fetch('../test/fixtures/1/left.json')
+            left = await left_fetch.text()
+            const right_fetch = await fetch('../test/fixtures/1/right.json')
+            right = await right_fetch.text()
+        }
+        fetchJSON()
+    </script>
+</head>
+<body>
+<button onClick="diff(left, right);" id="addButton">Diff</button>
+</body>
+</html>
