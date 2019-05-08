@@ -3,8 +3,8 @@ build:
 	mv src/main jdp-go
 
 build-wasm:
-	cd wasm && GOOS=js GOARCH=wasm go build main.go
-	mv wasm/main jdp-go.wasm
+	cd src/wasm && GOOS=js GOARCH=wasm go build main.go
+	mv src/wasm/main jdp-go.wasm
 
 server:
 	echo "npm i http-server"
