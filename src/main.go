@@ -1,3 +1,6 @@
+// Reference implementation:
+// https://stackblitz.com/edit/jsondiffpatch
+
 package main
 
 import (
@@ -7,17 +10,23 @@ import (
 )
 
 var DEBUG = false
+
+// TODO command line param
 var BY_ID = false
+
+// TODO command line param
+var FIXTURE = "1"
 var TEXT_DIFF_MIN_LENGTH = 60
 
+var REMOVED = 0
 var TEXT_DIFF = 2
 var MOVED = 3
 
 func main() {
 
-	// TODO command line
-	left := fileToJSON(`test/fixtures/1/left.json`)
-	right := fileToJSON(`test/fixtures/1/right.json`)
+	// TODO command line param
+	left := fileToJSON(fmt.Sprintf(`test/fixtures/%s/left.json`, FIXTURE))
+	right := fileToJSON(fmt.Sprintf(`test/fixtures/%s/right.json`, FIXTURE))
 
 	// make the diff
 	diff_json := makeDiff(left, right)
@@ -78,67 +87,21 @@ func makeDiff(left interface{}, right interface{}) string {
 
 	// string
 	case string:
-		if DEBUG {
-			fmt.Printf("string %s\n", leftCasted)
-		}
-
-		rightStr, rightOk := right.(string)
-
-		if !rightOk {
-			// right isnt a string
-			return diffChange(left, right)
-		} else if leftCasted != rightStr {
-			// strings differ
-			// TODO enable once diffmatchpatch implements unidiff
-			//diffLongText := len(rightStr) >= TEXT_DIFF_MIN_LENGTH ||
-			//	len(leftCasted) >= TEXT_DIFF_MIN_LENGTH
-			//
-			//if diffLongText {
-			//	dmp := getDiffMatchPatch()
-			//	diff := dmp.DiffMain(leftCasted, rightStr, false)
-			//	json, _ := json.Marshal(diff)
-			//	return fmt.Sprintf(`[%s, 0, %d]`, json, TEXT_DIFF)
-			//} else {
-			return diffChange(left, right)
-			//}
-		}
+		return diffString(leftCasted, right)
 
 	// ints
-	case int:
-		if DEBUG {
-			fmt.Printf("int %d\n", leftCasted)
-		}
-
-		rightInt, rightOk := right.(int)
-
-		// right isnt an int or the values differ
-		if !rightOk || leftCasted != rightInt {
-			return diffChange(left, right)
-		}
+	case float64:
+		return diffNumber(leftCasted, right)
 
 	// booleans
 	case bool:
-		if DEBUG {
-			fmt.Printf("bool %s\n", leftCasted)
-		}
-
-		rightBool, rightOk := right.(bool)
-
-		// right isnt a bool or the values differ
-		if !rightOk || leftCasted != rightBool {
-			return diffChange(left, right)
-		}
+		return diffBool(leftCasted, right)
 	}
 	return ""
 }
 
-func diffChange(left interface{}, right interface{}) string {
-	leftJson, _ := json.Marshal(left)
-	rightJson, _ := json.Marshal(right)
-	return fmt.Sprintf("[%s, %s]", leftJson, rightJson)
-}
+// ----- DIFFS PER TYPE
 
-// TODO diff els with the .id field
 func diffArray(left []interface{}, right interface{}) string {
 	if DEBUG {
 		fmt.Printf("array %s\n", left)
@@ -163,8 +126,8 @@ func diffArrayByPos(left []interface{}, right []interface{}) string {
 	for k, v2 := range left {
 		// remove if right is shorter
 		if len(right) <= k {
-			json, _ := json.Marshal(left[k])
-			ret += fmt.Sprintf(`, "_%d": [%s, 0, 0]`, k, json)
+			removeJson := removeValue(left[k])
+			ret += fmt.Sprintf(`, "_%d": %s`, k, removeJson)
 			continue
 		}
 		diff := makeDiff(v2, right[k])
@@ -179,8 +142,8 @@ func diffArrayByPos(left []interface{}, right []interface{}) string {
 		if len(left) >= k {
 			continue
 		}
-		json, _ := json.Marshal(v2)
-		ret += fmt.Sprintf(`, "%d": [%s]`, k, json)
+		addJson := addValue(v2)
+		ret += fmt.Sprintf(`, "%d": %s`, k, addJson)
 	}
 	if ret == "" {
 		return ""
@@ -197,11 +160,12 @@ func diffArrayByID(left []interface{}, right []interface{}) string {
 
 	// init the ret as an array change
 	ret := ""
+	// scan the left for changes against the right
 	for id, k := range leftIndex {
 		// delete if not on right
 		if _, isset := rightIndex[id]; !isset {
-			json, _ := json.Marshal(left[leftIndex[id]])
-			ret += fmt.Sprintf(`, "_%d": [%s, 0, 0]`, k, json)
+			removeJson := removeValue(left[leftIndex[id]])
+			ret += fmt.Sprintf(`, "_%d": %s`, k, removeJson)
 			continue
 		}
 		// diff elements
@@ -211,8 +175,8 @@ func diffArrayByID(left []interface{}, right []interface{}) string {
 			_, isset := skipMove[leftIndex[id]]
 			if !isset && leftIndex[id] != rightIndex[id] {
 				// use the index from the RIGHT side
-				ret += fmt.Sprintf(`, "_%d": ["", %d, %d]`, rightIndex[id],
-					leftIndex[id], MOVED)
+				moveJson := moveValue(rightIndex[id], leftIndex[id])
+				ret += fmt.Sprintf(`, %s`, moveJson)
 				skipMove[rightIndex[id]] = true
 			}
 			continue
@@ -227,8 +191,8 @@ func diffArrayByID(left []interface{}, right []interface{}) string {
 		if _, isset := leftIndex[id]; isset {
 			continue
 		}
-		json, _ := json.Marshal(right[rightIndex[id]])
-		ret += fmt.Sprintf(`, "%d": [%s]`, k, json)
+		addJson := addValue(right[rightIndex[id]])
+		ret += fmt.Sprintf(`, "%d": %s`, k, addJson)
 	}
 
 	if ret == "" {
@@ -256,9 +220,7 @@ func diffObject(left map[string]interface{}, right interface{}) string {
 	rightObj, rightOk := right.(map[string]interface{})
 
 	if !rightOk { // right isnt an object
-		leftJson, _ := json.Marshal(left)
-		rightJson, _ := json.Marshal(right)
-		return fmt.Sprintf("[%s, %s]", leftJson, rightJson)
+		return changeValue(left, right)
 	}
 	if DEBUG {
 		fmt.Printf("object-right %s \n", rightObj)
@@ -267,6 +229,7 @@ func diffObject(left map[string]interface{}, right interface{}) string {
 	// init the ret
 	first := true
 	ret := ""
+	// scan the left for changes against the right
 	for k, v2 := range left {
 		diff := makeDiff(v2, rightObj[k])
 		if diff == "" {
@@ -288,8 +251,8 @@ func diffObject(left map[string]interface{}, right interface{}) string {
 		if first == false {
 			ret += ", "
 		}
-		json, _ := json.Marshal(val)
-		ret += fmt.Sprintf(`"%s": [%s]`, k, json)
+		addJson := addValue(val)
+		ret += fmt.Sprintf(`"%s": %s`, k, addJson)
 		first = false
 	}
 
@@ -297,4 +260,100 @@ func diffObject(left map[string]interface{}, right interface{}) string {
 		return ""
 	}
 	return fmt.Sprintf(`{%s}`, ret)
+}
+
+func diffString(left string, right interface{}) string {
+	if DEBUG {
+		fmt.Printf("string %s\n", left)
+	}
+
+	// removed
+	if right == nil {
+		return removeValue(left)
+	}
+
+	rightStr, rightOk := right.(string)
+
+	if !rightOk {
+		// right isnt a string
+		return changeValue(left, right)
+	} else if left != rightStr {
+		// strings differ
+		// TODO enable once diffmatchpatch implements unidiff
+		//diffLongText := len(rightStr) >= TEXT_DIFF_MIN_LENGTH ||
+		//	len(leftCasted) >= TEXT_DIFF_MIN_LENGTH
+		//
+		//if diffLongText {
+		//	dmp := getDiffMatchPatch()
+		//	diff := dmp.DiffMain(leftCasted, rightStr, false)
+		//	json, _ := json.Marshal(diff)
+		//	return fmt.Sprintf(`[%s, 0, %d]`, json, TEXT_DIFF)
+		//} else {
+		return changeValue(left, right)
+		//}
+	}
+
+	return ""
+}
+
+func diffNumber(left float64, right interface{}) string {
+	if DEBUG {
+		fmt.Printf("int %d\n", left)
+	}
+
+	// removed
+	if right == nil {
+		return removeValue(left)
+	}
+
+	rightInt, rightOk := right.(float64)
+
+	// right isnt an int or the values differ
+	if !rightOk || left != rightInt {
+		return changeValue(left, right)
+	}
+
+	return ""
+}
+
+func diffBool(left bool, right interface{}) string {
+	if DEBUG {
+		fmt.Printf("bool %s\n", left)
+	}
+
+	// removed
+	if right == nil {
+		return removeValue(left)
+	}
+
+	rightBool, rightOk := right.(bool)
+
+	// right isnt a bool or the values differ
+	if !rightOk || left != rightBool {
+		return changeValue(left, right)
+	}
+
+	return ""
+}
+
+// ----- OPERATIONS
+
+func changeValue(left interface{}, right interface{}) string {
+	leftJson, _ := json.Marshal(left)
+	rightJson, _ := json.Marshal(right)
+	return fmt.Sprintf("[%s, %s]", leftJson, rightJson)
+}
+
+func removeValue(left interface{}) string {
+	leftJson, _ := json.Marshal(left)
+	return fmt.Sprintf("[%s, 0, %d]", leftJson, REMOVED)
+}
+
+func addValue(left interface{}) string {
+	leftJson, _ := json.Marshal(left)
+	return fmt.Sprintf("[%s]", leftJson)
+}
+
+func moveValue(oldIndex int, newIndex int) string {
+	return fmt.Sprintf(`"_%d": ["", %d, %d]`, oldIndex, newIndex, MOVED)
 }
