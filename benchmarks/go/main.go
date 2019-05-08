@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var TRIES = 100000
+var TRIES = 1
 
 func main() {
 
