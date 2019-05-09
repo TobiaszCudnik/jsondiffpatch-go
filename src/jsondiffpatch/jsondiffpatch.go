@@ -117,6 +117,7 @@ func diffArrayByPos(left []interface{}, right []interface{},
 
 	retLocal := make(map[string]interface{})
 
+	// TODO channel
 	for k, v2 := range left {
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
@@ -128,6 +129,7 @@ func diffArrayByPos(left []interface{}, right []interface{},
 		diff(v2, right[k], &retLocal, kStr)
 	}
 	// add new elements from right
+	// TODO channel
 	for k, v2 := range right {
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
@@ -154,6 +156,7 @@ func diffArrayByID(left []interface{}, right []interface{},
 	retLocal := make(map[string]interface{})
 
 	// scan the left for changes against the right
+	// TODO channel
 	for id, k := range leftIndex {
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
@@ -180,6 +183,7 @@ func diffArrayByID(left []interface{}, right []interface{},
 	}
 
 	// add new elements from the right
+	// TODO channel
 	for id, k := range rightIndex {
 		// skip if set on the left
 		if _, isset := leftIndex[id]; isset {
@@ -225,11 +229,13 @@ func diffObject(left map[string]interface{}, right interface{},
 	retLocal := make(map[string]interface{})
 
 	// scan the left for changes against the right
+	// TODO channel
 	for k, v2 := range left {
 		diff(v2, rightObj[k], &retLocal, k)
 	}
 
 	// add new elements from the right
+	// TODO channel
 	for k, val := range rightObj {
 		// skip if set in on the left
 		if _, isset := left[k]; isset {
