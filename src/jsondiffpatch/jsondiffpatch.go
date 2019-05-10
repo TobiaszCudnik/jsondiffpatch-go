@@ -240,7 +240,7 @@ func diffObject(left map[string]interface{}, right interface{},
 		if _, isset := left[k]; isset {
 			continue
 		}
-		retLocal[key] = addValue(val)
+		retLocal[k] = addValue(val)
 	}
 
 	// store in the final json
