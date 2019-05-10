@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var TRIES = 100 * 1000
+var TRIES = 1000 * 1000
 
 //var TRIES = 1
 

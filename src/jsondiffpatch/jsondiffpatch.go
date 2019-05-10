@@ -117,7 +117,6 @@ func diffArrayByPos(left []interface{}, right []interface{},
 
 	retLocal := make(map[string]interface{})
 
-	// TODO channel
 	for k, v2 := range left {
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
@@ -323,25 +322,29 @@ func diffBool(left bool, right interface{}, ret *map[string]interface{},
 
 func changeValue(left interface{}, right interface{}) []interface{} {
 	ret := make([]interface{}, 2)
-	ret = append(ret, left, right)
+	ret[0] = left
+	ret[1] = right
 	return ret
-
 }
 
 func removeValue(left interface{}) []interface{} {
 	ret := make([]interface{}, 3)
-	ret = append(ret, left, 0, REMOVED)
+	ret[0] = left
+	ret[1] = 0
+	ret[2] = REMOVED
 	return ret
 }
 
 func addValue(left interface{}) []interface{} {
 	ret := make([]interface{}, 1)
-	ret = append(ret, left)
+	ret[0] = left
 	return ret
 }
 
 func moveValue(newIndex int) []interface{} {
 	ret := make([]interface{}, 3)
-	ret = append(ret, "", newIndex, MOVED)
+	ret[0] = ""
+	ret[1] = newIndex
+	ret[2] = MOVED
 	return ret
 }
