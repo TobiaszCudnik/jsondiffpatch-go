@@ -52,15 +52,17 @@ func DiffBytes(left []byte, right []byte) interface{} {
 }
 
 func Diff(left interface{}, right interface{}) interface{} {
-	ret := make(map[string]interface{})
+	channel := make(chan map[string]interface{}, 1)
 
-	diff(left, right, &ret, "root")
+	diff(left, right, "root", channel)
+
+	ret := <-channel
 
 	return ret["root"]
 }
 
-func diff(left interface{}, right interface{}, ret *map[string]interface{},
-	key string) {
+func diff(left interface{}, right interface{}, key string,
+	ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("make-Diff %s %s \n", left, right)
 	}
@@ -69,30 +71,30 @@ func diff(left interface{}, right interface{}, ret *map[string]interface{},
 
 	// array
 	case []interface{}:
-		diffArray(leftCasted, right, ret, key)
+		diffArray(leftCasted, right, key, ret)
 
 	// object
 	case map[string]interface{}:
-		diffObject(leftCasted, right, ret, key)
+		diffObject(leftCasted, right, key, ret)
 
 	// string
 	case string:
-		diffString(leftCasted, right, ret, key)
+		diffString(leftCasted, right, key, ret)
 
 	// ints
 	case float64:
-		diffNumber(leftCasted, right, ret, key)
+		diffNumber(leftCasted, right, key, ret)
 
 	// booleans
 	case bool:
-		diffBool(leftCasted, right, ret, key)
+		diffBool(leftCasted, right, key, ret)
 	}
 }
 
 // ----- DIFFS PER TYPE
 
-func diffArray(left []interface{}, right interface{}, ret *map[string]interface{},
-	key string) {
+func diffArray(left []interface{}, right interface{}, key string,
+	ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("array %s\n", left)
 	}
@@ -106,14 +108,14 @@ func diffArray(left []interface{}, right interface{}, ret *map[string]interface{
 
 	// both are arrays, diff by IDs or positions
 	if BY_ID {
-		diffArrayByID(left, rightArr, ret, key)
+		diffArrayByID(left, rightArr, key, ret)
 	} else {
-		diffArrayByPos(left, rightArr, ret, key)
+		diffArrayByPos(left, rightArr, key, ret)
 	}
 }
 
 func diffArrayByPos(left []interface{}, right []interface{},
-	ret *map[string]interface{}, key string) {
+	key string, ret <-chan map[string]interface{}) {
 
 	retLocal := make(map[string]interface{})
 
@@ -144,7 +146,7 @@ func diffArrayByPos(left []interface{}, right []interface{},
 }
 
 func diffArrayByID(left []interface{}, right []interface{},
-	ret *map[string]interface{}, key string) {
+	key string, ret <-chan map[string]interface{}) {
 	// index by ID
 	leftIndex := indexByID(left)
 	rightIndex := indexByID(right)
@@ -209,7 +211,7 @@ func indexByID(array []interface{}) map[string]int {
 }
 
 func diffObject(left map[string]interface{}, right interface{},
-	ret *map[string]interface{}, key string) {
+	key string, ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("object-left  %s\n", left)
 	}
@@ -224,6 +226,8 @@ func diffObject(left map[string]interface{}, right interface{},
 	if DEBUG {
 		fmt.Printf("object-right %s \n", rightObj)
 	}
+
+	channels := make(chan map[string]interface{}, 1)
 
 	retLocal := make(map[string]interface{})
 
@@ -240,15 +244,24 @@ func diffObject(left map[string]interface{}, right interface{},
 		if _, isset := left[k]; isset {
 			continue
 		}
-		retLocal[key] = addValue(val)
+		retLocal[k] = addValue(val)
+	}
+
+	for i := 0; i < 2; i++ {
+		select {
+		case msg1 := <-c1:
+			fmt.Println("received", msg1)
+		case msg2 := <-c2:
+			fmt.Println("received", msg2)
+		}
 	}
 
 	// store in the final json
 	(*ret)[key] = retLocal
 }
 
-func diffString(left string, right interface{},
-	ret *map[string]interface{}, key string) {
+func diffString(left string, right interface{}, key string,
+	ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("string %s\n", left)
 	}
@@ -279,8 +292,8 @@ func diffString(left string, right interface{},
 	}
 }
 
-func diffNumber(left float64, right interface{}, ret *map[string]interface{},
-	key string) {
+func diffNumber(left float64, right interface{}, key string,
+	ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("int %d\n", left)
 	}
@@ -299,8 +312,8 @@ func diffNumber(left float64, right interface{}, ret *map[string]interface{},
 	}
 }
 
-func diffBool(left bool, right interface{}, ret *map[string]interface{},
-	key string) {
+func diffBool(left bool, right interface{}, key string,
+	ret <-chan map[string]interface{}) {
 	if DEBUG {
 		fmt.Printf("bool %s\n", left)
 	}
