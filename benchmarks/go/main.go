@@ -16,6 +16,8 @@ var TRIES = 100 * 1000
 //var TRIES = 1
 
 func main() {
+	// CPU profiling by default
+	//defer profile.Start().Stop()
 
 	// TODO command line param
 	left := fileToJSON(fmt.Sprintf(`test/fixtures/1/left.json`))

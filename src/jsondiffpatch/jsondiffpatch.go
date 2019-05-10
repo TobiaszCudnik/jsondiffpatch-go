@@ -126,28 +126,32 @@ func diffArray(left []interface{}, right interface{}) interface{} {
 
 func diffArrayByPos(left []interface{}, right []interface{}) interface{} {
 
-	// init the channel and its counter
-	fields := make(chan fieldChan)
-	counter := 0
 	ret := make(map[string]interface{})
+	keys := make([]int, 0)
 
-	for k, val := range left {
-		k := k
-		val := val
+	for k := range left {
+		//k := k
+		//val := val
 		kStr := strconv.Itoa(k)
 		// remove if right is shorter
 		if len(right) <= k {
 			ret[kStr] = removeValue(left[k])
 			continue
 		}
-		go func() {
-			diff(val, right[k], kStr, fields)
-		}()
-		counter++
-
+		keys = append(keys, k)
 	}
+
+	// init the channel
+	fieldsChan := make(chan fieldChan, len(keys))
+	for _, k := range keys {
+		go diff(left[k], right[k], strconv.Itoa(k), fieldsChan)
+	}
+
+	// get the results from the channel
+	channelToFields(len(keys), fieldsChan, &ret)
+
 	// add new elements from right
-	// TODO channel
+	// TODO channel?
 	for k, val := range right {
 		// skip all indexes from the left
 		if len(left) >= k {
@@ -156,13 +160,11 @@ func diffArrayByPos(left []interface{}, right []interface{}) interface{} {
 		ret[strconv.Itoa(k)] = addValue(val)
 	}
 
-	// get the results from the channel
-	channelToFields(counter, fields, &ret)
-
 	return ret
 }
 
-func channelToFields(counter int, fields chan fieldChan, ret *map[string]interface{}) {
+func channelToFields(counter int, fields chan fieldChan,
+	ret *map[string]interface{}) {
 	for i := 0; i < counter; i++ {
 		field := <-fields
 		if field.value != nil {
@@ -253,19 +255,18 @@ func diffObject(left map[string]interface{}, right interface{}) interface{} {
 	}
 
 	// init the channel and its counter
-	fields := make(chan fieldChan)
-	counter := 0
+	fieldsChan := make(chan fieldChan, len(left))
 	ret := make(map[string]interface{})
 
 	// scan the left for changes against the right
 	for k, val := range left {
-		k := k
-		val := val
-		go func() {
-			diff(val, rightObj[k], k, fields)
-		}()
-		counter++
+		//k := k
+		//val := val
+		go diff(val, rightObj[k], k, fieldsChan)
 	}
+
+	// get the results from the channel
+	channelToFields(len(left), fieldsChan, &ret)
 
 	// add new elements from the right
 	// TODO channel?
@@ -276,9 +277,6 @@ func diffObject(left map[string]interface{}, right interface{}) interface{} {
 		}
 		ret[k] = addValue(val)
 	}
-
-	// get the results from the channel
-	channelToFields(counter, fields, &ret)
 
 	return ret
 }
