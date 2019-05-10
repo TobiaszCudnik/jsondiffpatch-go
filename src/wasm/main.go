@@ -2,6 +2,8 @@ package main
 
 import (
 	"../jsondiffpatch"
+	"encoding/json"
+	"fmt"
 	"syscall/js"
 )
 
@@ -9,7 +11,9 @@ func diff(this js.Value, i []js.Value) interface{} {
 	left := i[0].String()
 	right := i[1].String()
 	diff := jsondiffpatch.DiffStrings(left, right)
-	println(diff)
+	diffJson, _ := json.Marshal(diff)
+	diffString := fmt.Sprintf("%s", diffJson)
+	println(diffString)
 
 	return nil
 }

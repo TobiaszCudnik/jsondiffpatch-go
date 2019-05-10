@@ -2,20 +2,23 @@ const fs = require('fs')
 const jsondiffpatch = require('jsondiffpatch')
 const microtime = require('microtime')
 
-const TRIES = 100 * 1000
+const TRIES = 1000 * 1000
 // const TRIES = 1
 
 const left_text = fs.readFileSync('./test/fixtures/1/left.json')
 const right_text = fs.readFileSync('./test/fixtures/1/right.json')
 
-const left = []
-const right = []
+const left = JSON.parse(left_text)
+const right = JSON.parse(right_text)
 
+// const left = []
+// const right = []
+//
 // prepare a separate fixture per test
-for (let i = 0; i <= TRIES; i++) {
-    left[i] = JSON.parse(left_text)
-    right[i] = JSON.parse(right_text)
-}
+// for (let i = 0; i <= TRIES; i++) {
+//     left[i] = JSON.parse(left_text)
+//     right[i] = JSON.parse(right_text)
+// }
 
 const differ = new jsondiffpatch.DiffPatcher()
 
@@ -29,7 +32,8 @@ const start = microtime.now()
 // benchmark
 for (let i = 0; i < TRIES; i++) {
     // make the diff
-    differ.diff(left[i], right[i])
+    // differ.diff(left[i], right[i])
+    differ.diff(left, right)
 }
 
 const elapsed = microtime.now() - start

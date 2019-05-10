@@ -20,15 +20,11 @@ func main() {
 	right := fileToJSON(fmt.Sprintf(`test/fixtures/%s/right.json`, FIXTURE))
 
 	// make the diff
-	diff_json := jsondiffpatch.Diff(left, right)
+	diff := jsondiffpatch.Diff(left, right)
 
-	// pretty print the result
-	var diff interface{}
-	if err := json.Unmarshal([]byte(diff_json), &diff); err != nil {
-		panic(err)
-	}
-	pp_json, _ := json.MarshalIndent(diff, "", "  ")
-	fmt.Printf("%s\n", pp_json)
+	// pprint
+	ppJson, _ := json.MarshalIndent(diff, "", "  ")
+	fmt.Printf("%s\n", ppJson)
 
 }
 
