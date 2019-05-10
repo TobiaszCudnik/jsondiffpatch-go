@@ -2,7 +2,7 @@ const fs = require('fs')
 const jsondiffpatch = require('jsondiffpatch')
 const microtime = require('microtime')
 
-const TRIES = 1000 * 1000
+const TRIES = 100 * 1000
 // const TRIES = 1
 
 const left_text = fs.readFileSync('./test/fixtures/1/left.json')
