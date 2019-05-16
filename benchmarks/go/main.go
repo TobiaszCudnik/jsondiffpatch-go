@@ -11,15 +11,15 @@ import (
 	"time"
 )
 
-var TRIES = 100 * 1000
+var TRIES = 100
 
 //var TRIES = 1
 
 func main() {
 
 	// TODO command line param
-	left := fileToJSON(fmt.Sprintf(`test/fixtures/1/left.json`))
-	right := fileToJSON(fmt.Sprintf(`test/fixtures/1/right.json`))
+	left := fileToJSON(fmt.Sprintf(`test/fixtures/2/left.json`))
+	right := fileToJSON(fmt.Sprintf(`test/fixtures/2/right.json`))
 
 	start := time.Now()
 	for i := 0; i < TRIES; i++ {

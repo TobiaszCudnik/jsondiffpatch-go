@@ -11,7 +11,7 @@ import (
 )
 
 // TODO command line param
-var FIXTURE = "1"
+var FIXTURE = "2"
 
 func main() {
 
