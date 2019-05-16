@@ -6,6 +6,7 @@ package jsondiffpatch
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 )
 
 var DEBUG = false
@@ -32,6 +33,8 @@ var MOVED = 3
 //	return diffMatchPathInstance
 //}
 
+var lock = sync.RWMutex{}
+
 func DiffStrings(left string, right string) interface{} {
 	return DiffBytes([]byte(left), []byte(right))
 }
@@ -54,13 +57,13 @@ func DiffBytes(left []byte, right []byte) interface{} {
 func Diff(left interface{}, right interface{}) interface{} {
 	ret := make(map[string]interface{})
 
-	diff(left, right, &ret, "root")
+	diff(left, right, &ret, "root", nil)
 
 	return ret["root"]
 }
 
 func diff(left interface{}, right interface{}, ret *map[string]interface{},
-	key string) {
+	key string, wg *sync.WaitGroup) {
 	if DEBUG {
 		fmt.Printf("make-Diff %s %s \n", left, right)
 	}
@@ -87,6 +90,10 @@ func diff(left interface{}, right interface{}, ret *map[string]interface{},
 	case bool:
 		diffBool(leftCasted, right, ret, key)
 	}
+
+	if wg != nil {
+		wg.Done()
+	}
 }
 
 // ----- DIFFS PER TYPE
@@ -100,7 +107,9 @@ func diffArray(left []interface{}, right interface{}, ret *map[string]interface{
 	rightArr, rightOk := right.([]interface{})
 	if !rightOk {
 		// right isn't an array
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 		return
 	}
 
@@ -116,17 +125,22 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	ret *map[string]interface{}, key string) {
 
 	retLocal := make(map[string]interface{})
+	var wg sync.WaitGroup
 
-	for k, v2 := range left {
+	for k, val := range left {
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
 		// remove if right is shorter
 		if len(right) <= k {
+			lock.Lock()
 			retLocal[kStr] = removeValue(left[k])
+			lock.Unlock()
 			continue
 		}
-		diff(v2, right[k], &retLocal, kStr)
+		wg.Add(1)
+		go diff(val, right[k], &retLocal, kStr, &wg)
 	}
+	wg.Wait()
 	// add new elements from right
 	// TODO channel
 	for k, v2 := range right {
@@ -136,11 +150,15 @@ func diffArrayByPos(left []interface{}, right []interface{},
 		if len(left) >= k {
 			continue
 		}
+		lock.Lock()
 		retLocal[kStr] = addValue(v2)
+		lock.Unlock()
 	}
 
 	// store in the final json
+	lock.Lock()
 	(*ret)[key] = retLocal
+	lock.Unlock()
 }
 
 func diffArrayByID(left []interface{}, right []interface{},
@@ -161,7 +179,9 @@ func diffArrayByID(left []interface{}, right []interface{},
 		kStr := fmt.Sprintf(`%d`, k)
 		// delete if not on the right
 		if _, isset := rightIndex[id]; !isset {
+			lock.Lock()
 			(*ret)[kStr] = removeValue(left[leftIndex[id]])
+			lock.Unlock()
 			continue
 		}
 		// diff elements
@@ -190,11 +210,15 @@ func diffArrayByID(left []interface{}, right []interface{},
 		}
 		// TODO convert properly
 		kStr := fmt.Sprintf(`%d`, k)
+		lock.Lock()
 		retLocal[kStr] = addValue(right[rightIndex[id]])
+		lock.Unlock()
 	}
 
 	// store in the final json
+	lock.Lock()
 	(*ret)[key] = retLocal
+	lock.Unlock()
 }
 
 // Returns a map of ID -> position (index)
@@ -218,7 +242,9 @@ func diffObject(left map[string]interface{}, right interface{},
 
 	// right isnt an object
 	if !rightOk {
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 		return
 	}
 	if DEBUG {
@@ -226,12 +252,15 @@ func diffObject(left map[string]interface{}, right interface{},
 	}
 
 	retLocal := make(map[string]interface{})
+	var wg sync.WaitGroup
 
 	// scan the left for changes against the right
 	// TODO channel
-	for k, v2 := range left {
-		diff(v2, rightObj[k], &retLocal, k)
+	for k, val := range left {
+		wg.Add(1)
+		go diff(val, rightObj[k], &retLocal, k, &wg)
 	}
+	wg.Wait()
 
 	// add new elements from the right
 	// TODO channel
@@ -240,11 +269,15 @@ func diffObject(left map[string]interface{}, right interface{},
 		if _, isset := left[k]; isset {
 			continue
 		}
+		lock.Lock()
 		retLocal[k] = addValue(val)
+		lock.Unlock()
 	}
 
 	// store in the final json
+	lock.Lock()
 	(*ret)[key] = retLocal
+	lock.Unlock()
 }
 
 func diffString(left string, right interface{},
@@ -255,7 +288,9 @@ func diffString(left string, right interface{},
 
 	// removed
 	if right == nil {
+		lock.Lock()
 		(*ret)[key] = removeValue(left)
+		lock.Unlock()
 		return
 	}
 
@@ -263,7 +298,9 @@ func diffString(left string, right interface{},
 
 	if !rightOk {
 		// right isnt a string
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 	} else if left != rightStr {
 		// strings differ
 		// TODO enable once diffmatchpatch implements unidiff
@@ -274,7 +311,9 @@ func diffString(left string, right interface{},
 		//	dmp := getDiffMatchPatch()
 		//	ret[key] = dmp.DiffMain(leftCasted, rightStr, false)
 		//} else {
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 		//}
 	}
 }
@@ -287,7 +326,9 @@ func diffNumber(left float64, right interface{}, ret *map[string]interface{},
 
 	// removed
 	if right == nil {
+		lock.Lock()
 		(*ret)[key] = removeValue(left)
+		lock.Unlock()
 		return
 	}
 
@@ -295,7 +336,9 @@ func diffNumber(left float64, right interface{}, ret *map[string]interface{},
 
 	// right isnt an int or the values differ
 	if !rightOk || left != rightInt {
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 	}
 }
 
@@ -307,14 +350,18 @@ func diffBool(left bool, right interface{}, ret *map[string]interface{},
 
 	// removed
 	if right == nil {
+		lock.Lock()
 		(*ret)[key] = removeValue(left)
+		lock.Unlock()
 	}
 
 	rightBool, rightOk := right.(bool)
 
 	// right isnt a bool or the values differ
 	if !rightOk || left != rightBool {
+		lock.Lock()
 		(*ret)[key] = changeValue(left, right)
+		lock.Unlock()
 	}
 }
 
