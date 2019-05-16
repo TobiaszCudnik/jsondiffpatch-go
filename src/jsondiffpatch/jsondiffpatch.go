@@ -6,6 +6,7 @@ package jsondiffpatch
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 var DEBUG = false
@@ -118,8 +119,7 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	retLocal := make(map[string]interface{})
 
 	for k, v2 := range left {
-		// TODO convert properly
-		kStr := fmt.Sprintf(`%d`, k)
+		kStr := strconv.Itoa(k)
 		// remove if right is shorter
 		if len(right) <= k {
 			retLocal[kStr] = removeValue(left[k])
@@ -130,8 +130,7 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	// add new elements from right
 	// TODO channel
 	for k, v2 := range right {
-		// TODO convert properly
-		kStr := fmt.Sprintf(`%d`, k)
+		kStr := strconv.Itoa(k)
 		// skip all indexes from the left
 		if len(left) >= k {
 			continue
@@ -140,7 +139,9 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	}
 
 	// store in the final json
-	(*ret)[key] = retLocal
+	if len(retLocal) > 0 {
+		(*ret)[key] = retLocal
+	}
 }
 
 func diffArrayByID(left []interface{}, right []interface{},
@@ -157,8 +158,7 @@ func diffArrayByID(left []interface{}, right []interface{},
 	// scan the left for changes against the right
 	// TODO channel
 	for id, k := range leftIndex {
-		// TODO convert properly
-		kStr := fmt.Sprintf(`%d`, k)
+		kStr := strconv.Itoa(k)
 		// delete if not on the right
 		if _, isset := rightIndex[id]; !isset {
 			(*ret)[kStr] = removeValue(left[leftIndex[id]])
@@ -172,8 +172,7 @@ func diffArrayByID(left []interface{}, right []interface{},
 		//	// move if indexes differ
 		//	_, isset := skipMove[leftIndex[id]]
 		//	if !isset && leftIndex[id] != rightIndex[id] {
-		//		// TODO convert properly
-		//		rightIndex := fmt.Sprintf(`%d`, rightIndex[id])
+		//		rightIndex := strconv.Itoa(k)
 		//		// use the index from the RIGHT side
 		//		retLocal[rightIndex] = moveValue(leftIndex[id])
 		//	}
@@ -188,13 +187,14 @@ func diffArrayByID(left []interface{}, right []interface{},
 		if _, isset := leftIndex[id]; isset {
 			continue
 		}
-		// TODO convert properly
-		kStr := fmt.Sprintf(`%d`, k)
+		kStr := strconv.Itoa(k)
 		retLocal[kStr] = addValue(right[rightIndex[id]])
 	}
 
 	// store in the final json
-	(*ret)[key] = retLocal
+	if len(retLocal) > 0 {
+		(*ret)[key] = retLocal
+	}
 }
 
 // Returns a map of ID -> position (index)
@@ -244,7 +244,9 @@ func diffObject(left map[string]interface{}, right interface{},
 	}
 
 	// store in the final json
-	(*ret)[key] = retLocal
+	if len(retLocal) > 0 {
+		(*ret)[key] = retLocal
+	}
 }
 
 func diffString(left string, right interface{},
