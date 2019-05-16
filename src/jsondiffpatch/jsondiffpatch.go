@@ -110,8 +110,9 @@ func diffArray(left []interface{}, right interface{}, ret *map[string]interface{
 	rightArr, rightOk := right.([]interface{})
 	if !rightOk {
 		// right isn't an array
+		value := changeValue(left, right)
 		lock.Lock()
-		(*ret)[key] = changeValue(left, right)
+		(*ret)[key] = value
 		lock.Unlock()
 		return
 	}
@@ -135,8 +136,9 @@ func diffArrayByPos(left []interface{}, right []interface{},
 		kStr := strconv.Itoa(k)
 		// remove if right is shorter
 		if len(right) <= k {
+			value := removeValue(left[k])
 			lockLocal.Lock()
-			retLocal[kStr] = removeValue(left[k])
+			retLocal[kStr] = value
 			lockLocal.Unlock()
 			continue
 		}
@@ -144,23 +146,25 @@ func diffArrayByPos(left []interface{}, right []interface{},
 		go diff(val, right[k], &retLocal, kStr, &wg, &lockLocal)
 	}
 	// add new elements from right
-	// TODO channel
 	for k, v2 := range right {
 		kStr := strconv.Itoa(k)
 		// skip all indexes from the left
 		if len(left) >= k {
 			continue
 		}
+		value := addValue(v2)
 		lockLocal.Lock()
-		retLocal[kStr] = addValue(v2)
+		retLocal[kStr] = value
 		lockLocal.Unlock()
 	}
 
 	wg.Wait()
 	// store in the final json
-	lock.Lock()
-	(*ret)[key] = retLocal
-	lock.Unlock()
+	if len(retLocal) > 0 {
+		lock.Lock()
+		(*ret)[key] = retLocal
+		lock.Unlock()
+	}
 }
 
 func diffArrayByID(left []interface{}, right []interface{},
@@ -216,9 +220,11 @@ func diffArrayByID(left []interface{}, right []interface{},
 	}
 
 	// store in the final json
-	lock.Lock()
-	(*ret)[key] = retLocal
-	lock.Unlock()
+	if len(retLocal) > 0 {
+		lock.Lock()
+		(*ret)[key] = retLocal
+		lock.Unlock()
+	}
 }
 
 // Returns a map of ID -> position (index)
@@ -276,9 +282,11 @@ func diffObject(left map[string]interface{}, right interface{},
 
 	wg.Wait()
 	// store in the final json
-	lock.Lock()
-	(*ret)[key] = retLocal
-	lock.Unlock()
+	if len(retLocal) > 0 {
+		lock.Lock()
+		(*ret)[key] = retLocal
+		lock.Unlock()
+	}
 }
 
 func diffString(left string, right interface{},
@@ -289,8 +297,9 @@ func diffString(left string, right interface{},
 
 	// removed
 	if right == nil {
+		value := removeValue(left)
 		lock.Lock()
-		(*ret)[key] = removeValue(left)
+		(*ret)[key] = value
 		lock.Unlock()
 		return
 	}
@@ -299,8 +308,9 @@ func diffString(left string, right interface{},
 
 	if !rightOk {
 		// right isnt a string
+		value := changeValue(left, right)
 		lock.Lock()
-		(*ret)[key] = changeValue(left, right)
+		(*ret)[key] = value
 		lock.Unlock()
 	} else if left != rightStr {
 		// strings differ
@@ -312,8 +322,9 @@ func diffString(left string, right interface{},
 		//	dmp := getDiffMatchPatch()
 		//	ret[key] = dmp.DiffMain(leftCasted, rightStr, false)
 		//} else {
+		value := changeValue(left, right)
 		lock.Lock()
-		(*ret)[key] = changeValue(left, right)
+		(*ret)[key] = value
 		lock.Unlock()
 		//}
 	}
@@ -327,8 +338,9 @@ func diffNumber(left float64, right interface{}, ret *map[string]interface{},
 
 	// removed
 	if right == nil {
+		value := removeValue(left)
 		lock.Lock()
-		(*ret)[key] = removeValue(left)
+		(*ret)[key] = value
 		lock.Unlock()
 		return
 	}
@@ -337,8 +349,9 @@ func diffNumber(left float64, right interface{}, ret *map[string]interface{},
 
 	// right isnt an int or the values differ
 	if !rightOk || left != rightInt {
+		value := changeValue(left, right)
 		lock.Lock()
-		(*ret)[key] = changeValue(left, right)
+		(*ret)[key] = value
 		lock.Unlock()
 	}
 }
@@ -351,8 +364,9 @@ func diffBool(left bool, right interface{}, ret *map[string]interface{},
 
 	// removed
 	if right == nil {
+		value := removeValue(left)
 		lock.Lock()
-		(*ret)[key] = removeValue(left)
+		(*ret)[key] = value
 		lock.Unlock()
 	}
 
@@ -360,8 +374,9 @@ func diffBool(left bool, right interface{}, ret *map[string]interface{},
 
 	// right isnt a bool or the values differ
 	if !rightOk || left != rightBool {
+		value := changeValue(left, right)
 		lock.Lock()
-		(*ret)[key] = changeValue(left, right)
+		(*ret)[key] = value
 		lock.Unlock()
 	}
 }
