@@ -15,7 +15,7 @@ var DEBUG = false
 // TODO command line param
 var BY_ID = false
 var TEXT_DIFF_MIN_LENGTH = 60
-var GOROUTINE_GROUP_SIZE = 12
+var GOROUTINE_GROUP_SIZE = 60
 
 // types of operations
 // TODO enum?
