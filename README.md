@@ -1,5 +1,13 @@
 ### Benchmarks
 
+**Fastest:** Mutexes with groups (60 elements)
+
+Time: 0.22s
+
+**Slowest:** Node.js
+
+Time: 1.19s
+
 ##### Node.js
 
 ```
