@@ -6,6 +6,7 @@ package jsondiffpatch
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 )
@@ -128,21 +129,18 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	retLocal := make(map[string]interface{})
 	lockLocal := sync.RWMutex{}
 
-	if len(left) < GOROUTINE_GROUP_SIZE {
-		diffArrayPartByPos(left, right, 0, len(left),
-			&retLocal, nil, &lockLocal)
-	} else {
-		var wg sync.WaitGroup
-		// go through the array in parts
-		for i := 0; i <= len(left); i += GOROUTINE_GROUP_SIZE {
-			wg.Add(1)
-			go diffArrayPartByPos(left, right, i, i+GOROUTINE_GROUP_SIZE,
-				&retLocal, &wg, &lockLocal)
-		}
+	middle := math.Floor(float64(len(left)) / 2)
 
-		// wait for all goroutine groups
-		wg.Wait()
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	// go through the array in parts
+	go diffArrayPartByPos(left, right, 0, int(middle),
+		&retLocal, &wg, &lockLocal)
+	go diffArrayPartByPos(left, right, int(middle), len(left),
+		&retLocal, &wg, &lockLocal)
+
+	// wait for all goroutine groups
+	wg.Wait()
 
 	// add new elements from right
 	for k, v2 := range right {
@@ -281,40 +279,30 @@ func diffObject(left map[string]interface{}, right interface{},
 	retLocal := make(map[string]interface{})
 	lockLocal := sync.RWMutex{}
 
-	if len(left) < GOROUTINE_GROUP_SIZE {
-		keys := make([]string, 0, len(left))
-		for k := range left {
-			keys = append(keys, k)
-		}
-		diffObjectPart(left, rightObj, keys, &retLocal, nil, &lockLocal)
-	} else {
-		var wg sync.WaitGroup
-		keys := make([]string, GOROUTINE_GROUP_SIZE)
-		i := 0
-		// scan the left for changes against the right
-		for k := range left {
-			// add a key to the group
-			keys[i] = k
-			i++
-			// parse in groups
-			if i != GOROUTINE_GROUP_SIZE {
-				continue
-			}
-			wg.Add(1)
-			go diffObjectPart(left, rightObj, keys, &retLocal, &wg, &lockLocal)
-			keys = make([]string, GOROUTINE_GROUP_SIZE)
-			i = 0
-		}
+	keysLeft := make([]string, 0)
+	keysRight := make([]string, 0)
 
-		// parse remaining keys (if any)
-		if len(keys) > 0 {
-			wg.Add(1)
-			go diffObjectPart(left, rightObj, keys, &retLocal, &wg, &lockLocal)
-		}
+	middle := int(math.Floor(float64(len(left)) / 2))
 
-		// wait for all goroutine groups
-		wg.Wait()
+	i := 0
+	for k := range left {
+		if i < middle {
+			keysLeft = append(keysLeft, k)
+		} else {
+			keysRight = append(keysRight, k)
+
+		}
+		i++
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go diffObjectPart(left, rightObj, keysLeft, &retLocal, &wg, &lockLocal)
+	go diffObjectPart(left, rightObj, keysRight, &retLocal, &wg, &lockLocal)
+
+	// wait for all goroutine groups
+	wg.Wait()
 
 	// add new elements from the right
 	for k, val := range rightObj {
