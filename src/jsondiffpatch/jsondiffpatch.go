@@ -15,6 +15,7 @@ var DEBUG = false
 // TODO command line param
 var BY_ID = false
 var TEXT_DIFF_MIN_LENGTH = 60
+var GOROUTINE_GROUP_SIZE = 12
 
 // types of operations
 // TODO enum?
@@ -56,13 +57,13 @@ func DiffBytes(left []byte, right []byte) interface{} {
 func Diff(left interface{}, right interface{}) interface{} {
 	ret := make(map[string]interface{})
 
-	diff(left, right, &ret, "root", nil, nil)
+	diff(left, right, &ret, "root", nil)
 
 	return ret["root"]
 }
 
 func diff(left interface{}, right interface{}, ret *map[string]interface{},
-	key string, wg *sync.WaitGroup, lock *sync.RWMutex) {
+	key string, lock *sync.RWMutex) {
 	if DEBUG {
 		fmt.Printf("make-Diff %s %s \n", left, right)
 	}
@@ -92,10 +93,6 @@ func diff(left interface{}, right interface{}, ret *map[string]interface{},
 	// booleans
 	case bool:
 		diffBool(leftCasted, right, ret, key, lock)
-	}
-
-	if wg != nil {
-		wg.Done()
 	}
 }
 
@@ -129,22 +126,24 @@ func diffArrayByPos(left []interface{}, right []interface{},
 	ret *map[string]interface{}, key string, lock *sync.RWMutex) {
 
 	retLocal := make(map[string]interface{})
-	var wg sync.WaitGroup
 	lockLocal := sync.RWMutex{}
 
-	for k, val := range left {
-		kStr := strconv.Itoa(k)
-		// remove if right is shorter
-		if len(right) <= k {
-			value := removeValue(left[k])
-			lockLocal.Lock()
-			retLocal[kStr] = value
-			lockLocal.Unlock()
-			continue
+	if len(left) < GOROUTINE_GROUP_SIZE {
+		diffArrayPartByPos(left, right, 0, len(left),
+			&retLocal, nil, &lockLocal)
+	} else {
+		var wg sync.WaitGroup
+		// go through the array in parts
+		for i := 0; i <= len(left); i += GOROUTINE_GROUP_SIZE {
+			wg.Add(1)
+			go diffArrayPartByPos(left, right, i, i+GOROUTINE_GROUP_SIZE,
+				&retLocal, &wg, &lockLocal)
 		}
-		wg.Add(1)
-		go diff(val, right[k], &retLocal, kStr, &wg, &lockLocal)
+
+		// wait for all goroutine groups
+		wg.Wait()
 	}
+
 	// add new elements from right
 	for k, v2 := range right {
 		kStr := strconv.Itoa(k)
@@ -153,17 +152,38 @@ func diffArrayByPos(left []interface{}, right []interface{},
 			continue
 		}
 		value := addValue(v2)
-		lockLocal.Lock()
 		retLocal[kStr] = value
-		lockLocal.Unlock()
 	}
 
-	wg.Wait()
 	// store in the final json
 	if len(retLocal) > 0 {
 		lock.Lock()
 		(*ret)[key] = retLocal
 		lock.Unlock()
+	}
+}
+
+func diffArrayPartByPos(left []interface{}, right []interface{}, start int,
+	end int, ret *map[string]interface{}, wg *sync.WaitGroup,
+	lock *sync.RWMutex) {
+
+	for k := start; k < end && k < len(left); k++ {
+		k := k
+		val := left[k]
+		kStr := strconv.Itoa(k)
+		// remove if right is shorter
+		if len(right) <= k {
+			value := removeValue(left[k])
+			lock.Lock()
+			(*ret)[kStr] = value
+			lock.Unlock()
+			continue
+		}
+		diff(val, right[k], ret, kStr, lock)
+	}
+
+	if wg != nil {
+		wg.Done()
 	}
 }
 
@@ -257,15 +277,43 @@ func diffObject(left map[string]interface{}, right interface{},
 	if DEBUG {
 		fmt.Printf("object-right %s \n", rightObj)
 	}
-	lockLocal := sync.RWMutex{}
 
 	retLocal := make(map[string]interface{})
-	var wg sync.WaitGroup
+	lockLocal := sync.RWMutex{}
 
-	// scan the left for changes against the right
-	for k, val := range left {
-		wg.Add(1)
-		go diff(val, rightObj[k], &retLocal, k, &wg, &lockLocal)
+	if len(left) < GOROUTINE_GROUP_SIZE {
+		keys := make([]string, 0, len(left))
+		for k := range left {
+			keys = append(keys, k)
+		}
+		diffObjectPart(left, rightObj, keys, &retLocal, nil, &lockLocal)
+	} else {
+		var wg sync.WaitGroup
+		keys := make([]string, GOROUTINE_GROUP_SIZE)
+		i := 0
+		// scan the left for changes against the right
+		for k := range left {
+			// add a key to the group
+			keys[i] = k
+			i++
+			// parse in groups
+			if i != GOROUTINE_GROUP_SIZE {
+				continue
+			}
+			wg.Add(1)
+			go diffObjectPart(left, rightObj, keys, &retLocal, &wg, &lockLocal)
+			keys = make([]string, GOROUTINE_GROUP_SIZE)
+			i = 0
+		}
+
+		// parse remaining keys (if any)
+		if len(keys) > 0 {
+			wg.Add(1)
+			go diffObjectPart(left, rightObj, keys, &retLocal, &wg, &lockLocal)
+		}
+
+		// wait for all goroutine groups
+		wg.Wait()
 	}
 
 	// add new elements from the right
@@ -275,17 +323,28 @@ func diffObject(left map[string]interface{}, right interface{},
 			continue
 		}
 		value := addValue(val)
-		lockLocal.Lock()
 		retLocal[k] = value
-		lockLocal.Unlock()
 	}
 
-	wg.Wait()
 	// store in the final json
 	if len(retLocal) > 0 {
 		lock.Lock()
 		(*ret)[key] = retLocal
 		lock.Unlock()
+	}
+}
+
+func diffObjectPart(left map[string]interface{}, right map[string]interface{},
+	keys []string, ret *map[string]interface{}, wg *sync.WaitGroup,
+	lock *sync.RWMutex) {
+
+	// add new elements from the right
+	for _, k := range keys {
+		diff(left[k], right[k], ret, k, lock)
+	}
+
+	if wg != nil {
+		wg.Done()
 	}
 }
 
