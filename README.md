@@ -35,3 +35,12 @@ Time: 557361 (micro secs)
 Tries: 100
 Time: 846924 (micro secs)
 ```
+
+##### Mutexes with groups (8)
+
+```
+⋊> ~/w/go-jsondiffpatch on feature/shared-mem-groups ⨯ make benchmark-go
+./benchmark-go
+Tries: 100
+Time: 407660 (micro secs)
+```
